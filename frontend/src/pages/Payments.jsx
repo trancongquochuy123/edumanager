@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react'
 import { getPayments, addPayment, getStudents, getClasses } from '../services/api'
 import { Plus, X, DollarSign, Search } from 'lucide-react'
 
-const emptyForm = { student_id: '', class_id: '', amount: '', method: 'cash', note: '', date: new Date().toISOString().split('T')[0] }
+const toArr = (d) => (Array.isArray(d) ? d : [])
+const emptyForm = { student_id: '', class_id: '', amount: '', method: 'cash', note: '', date: '' }
 
 function formatVND(n) {
   return new Intl.NumberFormat('vi-VN').format(n || 0) + ' ₫'
@@ -10,35 +11,42 @@ function formatVND(n) {
 
 const methodLabel = { cash: 'Tiền mặt', transfer: 'Chuyển khoản', momo: 'MoMo', vnpay: 'VNPay' }
 const methodColor = {
-  cash: 'bg-emerald-100 text-emerald-700',
+  cash:     'bg-emerald-100 text-emerald-700',
   transfer: 'bg-blue-100 text-blue-700',
-  momo: 'bg-pink-100 text-pink-700',
-  vnpay: 'bg-violet-100 text-violet-700',
+  momo:     'bg-pink-100 text-pink-700',
+  vnpay:    'bg-violet-100 text-violet-700',
 }
 
 export default function Payments() {
-  const [payments, setPayments] = useState([])
-  const [students, setStudents] = useState([])
-  const [classes, setClasses] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [payments,  setPayments]  = useState([])
+  const [students,  setStudents]  = useState([])
+  const [classes,   setClasses]   = useState([])
+  const [loading,   setLoading]   = useState(true)
   const [showModal, setShowModal] = useState(false)
-  const [form, setForm] = useState(emptyForm)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
-  const [search, setSearch] = useState('')
+  const [form,      setForm]      = useState(emptyForm)
+  const [saving,    setSaving]    = useState(false)
+  const [error,     setError]     = useState('')
+  const [search,    setSearch]    = useState('')
 
   const load = async () => {
+    setLoading(true)
     try {
       const [p, s, c] = await Promise.all([getPayments(), getStudents(), getClasses()])
-      setPayments(p); setStudents(s); setClasses(c)
-    } catch { console.error('Load error') }
-    finally { setLoading(false) }
+      setPayments(toArr(p))
+      setStudents(toArr(s))
+      setClasses(toArr(c))
+    } catch (e) {
+      console.error(e)
+      setPayments([]); setStudents([]); setClasses([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
 
   const studentMap = Object.fromEntries(students.map(s => [s.id, s.name]))
-  const classMap = Object.fromEntries(classes.map(c => [c.id, c.class_name]))
+  const classMap   = Object.fromEntries(classes.map(c => [c.id, c.class_name]))
 
   const openModal = () => {
     setForm({ ...emptyForm, date: new Date().toISOString().split('T')[0] })
@@ -53,8 +61,9 @@ export default function Payments() {
     try {
       await addPayment({ ...form, amount: parseFloat(form.amount) })
       await load(); setShowModal(false)
-    } catch (e) { setError(e.response?.data?.detail || 'Có lỗi xảy ra') }
-    finally { setSaving(false) }
+    } catch (e) {
+      setError(e.response?.data?.detail || 'Có lỗi xảy ra')
+    } finally { setSaving(false) }
   }
 
   const filtered = payments.filter(p => {
@@ -63,7 +72,7 @@ export default function Payments() {
     return (
       sName.toLowerCase().includes(search.toLowerCase()) ||
       cName.toLowerCase().includes(search.toLowerCase()) ||
-      p.note?.toLowerCase().includes(search.toLowerCase())
+      (p.note || '').toLowerCase().includes(search.toLowerCase())
     )
   })
 
@@ -71,7 +80,6 @@ export default function Payments() {
 
   return (
     <div className="space-y-4 fade-in">
-      {/* Header */}
       <div className="card flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-3">
@@ -101,7 +109,6 @@ export default function Payments() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">
@@ -160,7 +167,6 @@ export default function Payments() {
         )}
       </div>
 
-      {/* Add Payment Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setShowModal(false)}>
           <div className="modal-box slide-in">

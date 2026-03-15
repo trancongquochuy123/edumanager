@@ -6,6 +6,7 @@ import {
 import { Plus, Pencil, Trash2, X, BookOpen, Users, UserPlus, Check } from 'lucide-react'
 
 const emptyForm = { class_name: '', teacher: '', schedule: '', tuition_fee: '', start_date: '' }
+const toArr = (d) => (Array.isArray(d) ? d : [])
 
 function formatVND(n) {
   return new Intl.NumberFormat('vi-VN').format(n || 0) + ' ₫'
@@ -27,7 +28,9 @@ export default function Classes() {
   const load = async () => {
     try {
       const [c, s, e] = await Promise.all([getClasses(), getStudents(), getEnrollments()])
-      setClasses(c); setStudents(s); setEnrollments(e)
+      setClasses(Array.isArray(c) ? c : [])
+      setStudents(Array.isArray(s) ? s : [])
+      setEnrollments(Array.isArray(e) ? e : [])
     } catch { setError('Không thể tải dữ liệu') }
     finally { setLoading(false) }
   }
@@ -67,7 +70,7 @@ export default function Classes() {
         await addEnrollment({ student_id: studentId, class_id: classId })
       }
       const e = await getEnrollments()
-      setEnrollments(e)
+      setEnrollments(Array.isArray(e) ? e : [])
     } catch (err) {
       alert(err.response?.data?.detail || 'Lỗi khi cập nhật đăng ký')
     }

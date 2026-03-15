@@ -3,6 +3,7 @@ import { getStudents, addStudent, updateStudent, deleteStudent } from '../servic
 import { Plus, Search, Pencil, Trash2, X, UserCheck, UserX, Users } from 'lucide-react'
 
 const emptyForm = { name: '', phone: '', parent_phone: '', email: '', address: '', status: 'active' }
+const toArr = (d) => (Array.isArray(d) ? d : [])
 
 export default function Students() {
   const [students, setStudents] = useState([])
@@ -16,11 +17,16 @@ export default function Students() {
   const [error, setError] = useState('')
 
   const load = async () => {
+    setLoading(true)
     try {
       const data = await getStudents()
-      setStudents(data)
-    } catch { setError('Không thể tải danh sách học sinh') }
-    finally { setLoading(false) }
+      setStudents(toArr(data))
+    } catch (e) {
+      console.error(e)
+      setStudents([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -58,26 +64,19 @@ export default function Students() {
 
   return (
     <div className="space-y-4 fade-in">
-      {/* Header */}
       <div className="card">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
           <div className="flex items-center gap-3 flex-1">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <input
-                className="input-field pl-9"
-                placeholder="Tìm học sinh..."
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+              <input className="input-field pl-9" placeholder="Tìm học sinh..." value={search}
+                onChange={e => setSearch(e.target.value)} />
             </div>
           </div>
           <button className="btn-primary" onClick={openAdd}>
             <Plus className="w-4 h-4" /> Thêm Học Sinh
           </button>
         </div>
-
-        {/* Stats row */}
         <div className="flex gap-4 mt-4 pt-4 border-t border-pink-50">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <Users className="w-4 h-4 text-pink-400" />
@@ -94,7 +93,6 @@ export default function Students() {
         </div>
       </div>
 
-      {/* Table */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">
@@ -112,7 +110,7 @@ export default function Students() {
               <thead>
                 <tr>
                   {['ID','Học Sinh','Điện Thoại','Email','Trạng Thái','Thao Tác'].map(h => (
-                    <th key={h} className="table-header text-left first:rounded-tl-2xl last:rounded-tr-2xl">{h}</th>
+                    <th key={h} className="table-header text-left">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -147,20 +145,10 @@ export default function Students() {
                     </td>
                     <td className="table-cell">
                       <div className="flex gap-2">
-                        <button
-                          className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
-                          onClick={() => openEdit(s)}
-                          title="Sửa"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </button>
-                        <button
-                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
-                          onClick={() => setDeleteConfirm(s)}
-                          title="Xóa"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <button className="p-1.5 rounded-lg text-blue-500 hover:bg-blue-50 transition-colors"
+                          onClick={() => openEdit(s)}><Pencil className="w-4 h-4" /></button>
+                        <button className="p-1.5 rounded-lg text-red-400 hover:bg-red-50 transition-colors"
+                          onClick={() => setDeleteConfirm(s)}><Trash2 className="w-4 h-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -171,23 +159,15 @@ export default function Students() {
         )}
       </div>
 
-      {/* Add/Edit Modal */}
       {showModal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
           <div className="modal-box slide-in">
             <div className="flex items-center justify-between px-6 py-4 border-b border-pink-100">
-              <h3 className="font-bold text-lg text-gray-800">
-                {editItem ? 'Cập Nhật Học Sinh' : 'Thêm Học Sinh Mới'}
-              </h3>
-              <button onClick={closeModal} className="p-2 rounded-xl hover:bg-pink-50 text-gray-400 hover:text-gray-600 transition-colors">
-                <X className="w-5 h-5" />
-              </button>
+              <h3 className="font-bold text-lg text-gray-800">{editItem ? 'Cập Nhật Học Sinh' : 'Thêm Học Sinh Mới'}</h3>
+              <button onClick={closeModal} className="p-2 rounded-xl hover:bg-pink-50 text-gray-400 transition-colors"><X className="w-5 h-5" /></button>
             </div>
-
             <div className="p-6 space-y-4">
-              {error && (
-                <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>
-              )}
+              {error && <div className="bg-red-50 border border-red-200 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="sm:col-span-2">
                   <label className="label">Họ và Tên *</label>
@@ -211,7 +191,7 @@ export default function Students() {
                 </div>
                 <div className="sm:col-span-2">
                   <label className="label">Địa Chỉ</label>
-                  <input className="input-field" placeholder="123 Đường ABC, Quận 1..." value={form.address}
+                  <input className="input-field" placeholder="123 Đường ABC..." value={form.address}
                     onChange={e => setForm(f => ({ ...f, address: e.target.value }))} />
                 </div>
                 <div className="sm:col-span-2">
@@ -224,23 +204,16 @@ export default function Students() {
                 </div>
               </div>
             </div>
-
             <div className="flex gap-3 justify-end px-6 py-4 border-t border-pink-50 bg-pink-50/30 rounded-b-2xl">
               <button className="btn-secondary" onClick={closeModal}>Hủy</button>
               <button className="btn-primary" onClick={handleSave} disabled={saving}>
-                {saving ? (
-                  <span className="flex items-center gap-2">
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Đang lưu...
-                  </span>
-                ) : editItem ? 'Cập Nhật' : 'Thêm Mới'}
+                {saving ? 'Đang lưu...' : editItem ? 'Cập Nhật' : 'Thêm Mới'}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete confirm */}
       {deleteConfirm && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && setDeleteConfirm(null)}>
           <div className="modal-box max-w-sm slide-in p-6">
@@ -249,14 +222,12 @@ export default function Students() {
                 <Trash2 className="w-7 h-7 text-red-500" />
               </div>
               <h3 className="font-bold text-gray-800 text-lg">Xác Nhận Xóa</h3>
-              <p className="text-gray-500 text-sm">Bạn có chắc muốn xóa học sinh <strong className="text-gray-700">"{deleteConfirm.name}"</strong>? Thao tác này không thể hoàn tác.</p>
+              <p className="text-gray-500 text-sm">Bạn có chắc muốn xóa <strong>"{deleteConfirm.name}"</strong>?</p>
             </div>
             <div className="flex gap-3 justify-center mt-6">
               <button className="btn-secondary" onClick={() => setDeleteConfirm(null)}>Hủy</button>
-              <button
-                className="btn-primary bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
-                onClick={() => handleDelete(deleteConfirm.id)}
-              >
+              <button className="btn-primary bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700"
+                onClick={() => handleDelete(deleteConfirm.id)}>
                 <Trash2 className="w-4 h-4" /> Xóa
               </button>
             </div>

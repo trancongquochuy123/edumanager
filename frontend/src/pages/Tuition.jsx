@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { getTuition } from '../services/api'
 import { CreditCard, Search, TrendingUp } from 'lucide-react'
 
+const toArr = (d) => (Array.isArray(d) ? d : [])
+
 function formatVND(n) {
   return new Intl.NumberFormat('vi-VN').format(n || 0) + ' ₫'
 }
@@ -13,9 +15,16 @@ export default function Tuition() {
   const [filter, setFilter] = useState('all')
 
   const load = async () => {
-    try { const data = await getTuition(); setTuition(data) }
-    catch (e) { console.error(e) }
-    finally { setLoading(false) }
+    setLoading(true)
+    try {
+      const data = await getTuition()
+      setTuition(toArr(data))
+    } catch (e) {
+      console.error(e)
+      setTuition([])
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -29,12 +38,11 @@ export default function Tuition() {
   })
 
   const summary = {
-    total: tuition.reduce((s, t) => s + (t.total_fee || 0), 0),
-    paid: tuition.reduce((s, t) => s + (t.paid || 0), 0),
-    remaining: tuition.reduce((s, t) => s + (t.remaining || 0), 0),
-    unpaidCount: tuition.filter(t => t.status === 'unpaid').length,
+    total:        tuition.reduce((s, t) => s + (t.total_fee || 0), 0),
+    paid:         tuition.reduce((s, t) => s + (t.paid || 0), 0),
+    remaining:    tuition.reduce((s, t) => s + (t.remaining || 0), 0),
+    unpaidCount:  tuition.filter(t => t.status === 'unpaid').length,
     partialCount: tuition.filter(t => t.status === 'partial').length,
-    paidCount: tuition.filter(t => t.status === 'paid').length,
   }
 
   const statusLabel = { paid: 'Đã đóng', partial: 'Còn thiếu', unpaid: 'Chưa đóng' }
@@ -42,13 +50,12 @@ export default function Tuition() {
 
   return (
     <div className="space-y-4 fade-in">
-      {/* Summary cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {[
-          { label: 'Tổng Học Phí', value: formatVND(summary.total), color: 'from-violet-500 to-purple-600' },
-          { label: 'Đã Thu', value: formatVND(summary.paid), color: 'from-emerald-500 to-teal-500' },
-          { label: 'Còn Thiếu', value: formatVND(summary.remaining), color: 'from-pink-500 to-rose-500' },
-          { label: 'Chưa Đóng', value: `${summary.unpaidCount + summary.partialCount} HS`, color: 'from-amber-400 to-orange-500' },
+          { label: 'Tổng Học Phí',  value: formatVND(summary.total),     color: 'from-violet-500 to-purple-600' },
+          { label: 'Đã Thu',        value: formatVND(summary.paid),       color: 'from-emerald-500 to-teal-500' },
+          { label: 'Còn Thiếu',     value: formatVND(summary.remaining),  color: 'from-pink-500 to-rose-500' },
+          { label: 'Chưa Đóng',     value: `${summary.unpaidCount + summary.partialCount} HS`, color: 'from-amber-400 to-orange-500' },
         ].map(c => (
           <div key={c.label} className="card flex items-center gap-3">
             <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${c.color} flex items-center justify-center flex-shrink-0`}>
@@ -62,31 +69,26 @@ export default function Tuition() {
         ))}
       </div>
 
-      {/* Filters */}
       <div className="card flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
           <input className="input-field pl-9" placeholder="Tìm học sinh, lớp học..."
             value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           {[['all','Tất cả'],['unpaid','Chưa đóng'],['partial','Còn thiếu'],['paid','Đã đóng']].map(([val, label]) => (
-            <button
-              key={val}
-              onClick={() => setFilter(val)}
+            <button key={val} onClick={() => setFilter(val)}
               className={`px-3 py-2 rounded-xl text-xs font-semibold transition-all ${
                 filter === val
                   ? 'bg-gradient-to-r from-pink-500 to-rose-500 text-white shadow-md'
                   : 'bg-white text-gray-500 border border-gray-200 hover:border-pink-300 hover:text-pink-600'
-              }`}
-            >
+              }`}>
               {label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Table */}
       <div className="card p-0 overflow-hidden">
         {loading ? (
           <div className="flex justify-center py-16">

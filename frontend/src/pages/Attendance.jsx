@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react'
 import { getClasses, getStudents, getEnrollments, getAttendance, postAttendance } from '../services/api'
 import { CalendarCheck, Save, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react'
 
+const toArr = (d) => (Array.isArray(d) ? d : [])
+
 export default function Attendance() {
   const [classes, setClasses] = useState([])
   const [students, setStudents] = useState([])
   const [enrollments, setEnrollments] = useState([])
-  const [existingAttendance, setExistingAttendance] = useState([])
   const [selectedClass, setSelectedClass] = useState('')
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [attendance, setAttendance] = useState({})
@@ -16,7 +17,11 @@ export default function Attendance() {
 
   useEffect(() => {
     Promise.all([getClasses(), getStudents(), getEnrollments()])
-      .then(([c, s, e]) => { setClasses(c); setStudents(s); setEnrollments(e) })
+      .then(([c, s, e]) => {
+        setClasses(toArr(c))
+        setStudents(toArr(s))
+        setEnrollments(toArr(e))
+      })
       .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
@@ -25,22 +30,20 @@ export default function Attendance() {
     if (!selectedClass || !selectedDate) return
     getAttendance({ class_id: selectedClass, date: selectedDate })
       .then(records => {
-        setExistingAttendance(records)
+        const safeRecords = toArr(records)
         const map = {}
-        records.forEach(r => { map[r.student_id] = r.status })
-        const enrolled = enrollments.filter(e => e.class_id === selectedClass)
+        safeRecords.forEach(r => { map[r.student_id] = r.status })
+        const enrolled = toArr(enrollments).filter(e => e.class_id === selectedClass)
         const newMap = {}
-        enrolled.forEach(e => {
-          newMap[e.student_id] = map[e.student_id] || 'present'
-        })
+        enrolled.forEach(e => { newMap[e.student_id] = map[e.student_id] || 'present' })
         setAttendance(newMap)
       })
       .catch(console.error)
   }, [selectedClass, selectedDate, enrollments])
 
-  const enrolledStudents = enrollments
+  const enrolledStudents = toArr(enrollments)
     .filter(e => e.class_id === selectedClass)
-    .map(e => students.find(s => s.id === e.student_id))
+    .map(e => toArr(students).find(s => s.id === e.student_id))
     .filter(Boolean)
 
   const handleStatus = (studentId, status) => {
@@ -52,33 +55,29 @@ export default function Attendance() {
     setSaving(true)
     try {
       const records = Object.entries(attendance).map(([student_id, status]) => ({
-        student_id,
-        class_id: selectedClass,
-        date: selectedDate,
-        status,
+        student_id, class_id: selectedClass, date: selectedDate, status,
       }))
       await postAttendance(records)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
-    } catch (e) { alert('Lỗi khi lưu điểm danh') }
+    } catch { alert('Lỗi khi lưu điểm danh') }
     finally { setSaving(false) }
   }
 
   const counts = {
     present: Object.values(attendance).filter(s => s === 'present').length,
-    absent: Object.values(attendance).filter(s => s === 'absent').length,
-    late: Object.values(attendance).filter(s => s === 'late').length,
+    absent:  Object.values(attendance).filter(s => s === 'absent').length,
+    late:    Object.values(attendance).filter(s => s === 'late').length,
   }
 
   const statusConfig = [
-    { value: 'present', label: 'Có mặt', icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50 border-emerald-200 hover:bg-emerald-100', activeColor: 'bg-emerald-500 text-white border-emerald-500' },
-    { value: 'absent', label: 'Vắng', icon: XCircle, color: 'text-red-500 bg-red-50 border-red-200 hover:bg-red-100', activeColor: 'bg-red-500 text-white border-red-500' },
-    { value: 'late', label: 'Đi trễ', icon: Clock, color: 'text-amber-600 bg-amber-50 border-amber-200 hover:bg-amber-100', activeColor: 'bg-amber-500 text-white border-amber-500' },
+    { value: 'present', activeColor: 'bg-emerald-500 border-emerald-500' },
+    { value: 'absent',  activeColor: 'bg-red-500 border-red-500' },
+    { value: 'late',    activeColor: 'bg-amber-500 border-amber-500' },
   ]
 
   return (
     <div className="space-y-4 fade-in">
-      {/* Filters */}
       <div className="card">
         <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-end">
           <div className="flex-1">
@@ -97,23 +96,14 @@ export default function Attendance() {
             </select>
           </div>
           {selectedClass && enrolledStudents.length > 0 && (
-            <button
-              className={`btn-primary ${saved ? 'from-emerald-500 to-teal-500' : ''}`}
-              onClick={handleSave}
-              disabled={saving}
-            >
-              {saving ? (
-                <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</>
-              ) : saved ? (
-                <><CheckCircle2 className="w-4 h-4" /> Đã lưu!</>
-              ) : (
-                <><Save className="w-4 h-4" /> Lưu Điểm Danh</>
-              )}
+            <button className={`btn-primary ${saved ? 'from-emerald-500 to-teal-500' : ''}`}
+              onClick={handleSave} disabled={saving}>
+              {saving ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Đang lưu...</>
+                : saved ? <><CheckCircle2 className="w-4 h-4" /> Đã lưu!</>
+                : <><Save className="w-4 h-4" /> Lưu Điểm Danh</>}
             </button>
           )}
         </div>
-
-        {/* Stats */}
         {selectedClass && enrolledStudents.length > 0 && (
           <div className="flex gap-4 mt-4 pt-4 border-t border-pink-50">
             <div className="flex items-center gap-2 text-sm">
@@ -132,7 +122,6 @@ export default function Attendance() {
         )}
       </div>
 
-      {/* Attendance table */}
       <div className="card p-0 overflow-hidden">
         {!selectedClass ? (
           <div className="text-center py-16">
@@ -174,18 +163,14 @@ export default function Attendance() {
                         </div>
                       </div>
                     </td>
-                    {statusConfig.map(({ value, activeColor, color }) => (
+                    {statusConfig.map(({ value, activeColor }) => (
                       <td key={value} className="table-cell text-center">
                         <div className="flex justify-center">
-                          <button
-                            onClick={() => handleStatus(s.id, value)}
+                          <button onClick={() => handleStatus(s.id, value)}
                             className={`w-8 h-8 rounded-full border-2 flex items-center justify-center transition-all duration-150 ${
-                              attendance[s.id] === value ? activeColor : 'border-gray-200 bg-white hover:border-gray-300'
-                            }`}
-                          >
-                            {attendance[s.id] === value && (
-                              <div className="w-3.5 h-3.5 bg-white rounded-full" />
-                            )}
+                              attendance[s.id] === value ? activeColor + ' text-white' : 'border-gray-200 bg-white hover:border-gray-300'
+                            }`}>
+                            {attendance[s.id] === value && <div className="w-3.5 h-3.5 bg-white rounded-full" />}
                           </button>
                         </div>
                       </td>
