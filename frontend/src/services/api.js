@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-const BASE_URL = 'git'
+const BASE_URL = 'https://edumanager-production-0459.up.railway.app'
+
 
 const api = axios.create({
   baseURL: BASE_URL,
