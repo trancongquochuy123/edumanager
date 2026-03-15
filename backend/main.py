@@ -33,3 +33,7 @@ data_dir.mkdir(exist_ok=True)
 @app.get("/")
 def root():
     return {"message": "EduManager API is running", "docs": "/docs"}
+
+@app.get("/health")
+def health():
+    return {"status": "ok"}
